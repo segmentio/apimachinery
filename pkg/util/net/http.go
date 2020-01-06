@@ -30,6 +30,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/net/http2"
 	"k8s.io/klog"
@@ -84,8 +85,6 @@ func IsProbableEOF(err error) bool {
 	return false
 }
 
-var defaultTransport = http.DefaultTransport.(*http.Transport)
-
 // SetOldTransportDefaults applies the defaults from http.DefaultTransport
 // for the Proxy, Dial, and TLSHandshakeTimeout fields if unset
 func SetOldTransportDefaults(t *http.Transport) *http.Transport {
@@ -96,10 +95,14 @@ func SetOldTransportDefaults(t *http.Transport) *http.Transport {
 	}
 	// If no custom dialer is set, use the default context dialer
 	if t.DialContext == nil && t.Dial == nil {
-		t.DialContext = defaultTransport.DialContext
+		t.DialContext = (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext
 	}
 	if t.TLSHandshakeTimeout == 0 {
-		t.TLSHandshakeTimeout = defaultTransport.TLSHandshakeTimeout
+		t.TLSHandshakeTimeout = 10 * time.Second
 	}
 	return t
 }
